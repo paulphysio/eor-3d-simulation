@@ -6,9 +6,11 @@ import { SimInputs, SimOutputs } from '../lib/proxyModel'
 interface Props {
   inputs: SimInputs
   outputs: SimOutputs
+  isPlaying?: boolean
+  animationProgress?: number
 }
 
-export default function ReservoirScene({ inputs, outputs }: Props) {
+export default function ReservoirScene({ inputs, outputs, isPlaying, animationProgress }: Props) {
   const mountRef = useRef<HTMLDivElement>(null)
   const sceneRef = useRef<any>({})
   const handleKeyDownRef = useRef<((e: KeyboardEvent) => void) | null>(null)
@@ -504,10 +506,15 @@ export default function ReservoirScene({ inputs, outputs }: Props) {
 
     const { copNorm, cwpNorm } = outputs
 
+    // Apply animation progress if playing
+    const progress = isPlaying && animationProgress !== undefined ? animationProgress : 1
+    const animatedCopNorm = copNorm * progress
+    const animatedCwpNorm = cwpNorm * progress
+
     // Update reservoir cell colours — oil saturation gradient
     s.cells.forEach(({ mesh, mat, i, j }: any) => {
       const distFromCenter = Math.sqrt((i - 2) ** 2 + (j - 2) ** 2) / 3.5
-      const saturation = Math.max(0.05, copNorm - distFromCenter * 0.25)
+      const saturation = Math.max(0.05, animatedCopNorm - distFromCenter * 0.25)
 
       // Oil-rich: amber-orange; Water-invaded: dark blue
       const oilR = 0.75 + saturation * 0.25
@@ -529,16 +536,16 @@ export default function ReservoirScene({ inputs, outputs }: Props) {
 
     // Water front expansion
     if (s.waterFront) {
-      const ws = 0.4 + cwpNorm * 0.9
+      const ws = 0.4 + animatedCwpNorm * 0.9
       s.waterFront.scale.set(ws, 1, ws)
-      s.waterMat && (s.waterMat.opacity = 0.12 + cwpNorm * 0.28)
+      s.waterMat && (s.waterMat.opacity = 0.12 + animatedCwpNorm * 0.28)
     }
 
     // Injection intensity controls particle speed and steam plume
     const sq = inputs.steamQuality
     const ir = inputs.injectionRate / 800
     s.injIntensity = 0.2 + sq * 0.4 + ir * 0.4
-  }, [outputs, inputs])
+  }, [outputs, inputs, isPlaying, animationProgress])
 
   useEffect(() => {
     init()
