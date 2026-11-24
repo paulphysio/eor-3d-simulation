@@ -1,63 +1,46 @@
-# Niger Delta Heavy Oil — EOR 3D Simulator
+# Niger Delta EOR Lab
 
-Interactive 3D steam flooding EOR simulator built with Next.js, Three.js, and a Gradient Boosting ML proxy model trained on 150 Eclipse reservoir simulation runs.
+An interactive 3D research platform for **thermal–chemical (hot chemical) enhanced oil recovery** of Niger Delta heavy oil. It brings together laboratory core-flood evidence, the governing physics, and an Eclipse-trained proxy simulator.
 
-## Live Demo
-Deploy to Vercel instantly — see below.
+> Based on *Enhancing Heavy Oil Recovery in the Niger Delta through Thermal-Chemical Methods: An Experimental Approach* — P. O. Madu, M. Chimezie, F. Onodu, D. Mmadu, P. Eyinnaya (B.Eng, FUTO, 2024). Supervisor: Engr. J. E. Odo.
 
-## Features
+## Key finding
 
-- **3D Reservoir Visualisation** — Full WebGL Three.js scene with animated wells, steam plume, particle flow, water front, and oil saturation colour mapping
-- **ML Proxy Model** — Gradient Boosting surrogate trained on real Eclipse simulation data (150 runs, 17 parameters)
-- **Real-time Prediction** — COP, CWP, Recovery Factor, Water Cut, Steam Efficiency update instantly as you adjust sliders
-- **Production History Chart** — Recharts line chart tracking simulation history
-- **3 Presets** — Thesis base case (80°C hot chemical), proxy model optimum, steam-only baseline
-- **Drag to orbit** — Mouse/touch controlled 3D camera
+A locally sourced **xanthan-gum flood at 80 °C recovered 97.89 % of OOIP**. That matches a 120 °C, 60 %-quality steam flood (97.97 %) while needing **~8× less heat per kg injected**.
 
-## Research Background
+## Sections
 
-This simulator is based on:
+| Section | What it shows |
+|---|---|
+| **Overview** | Animated 3D reservoir hero, the research in four steps, the recovery-vs-heat key-finding chart and the research workflow. |
+| **3D Simulator** | 10 × 10 × 3 five-spot steam flood with stratigraphy (Benin, Agbada, cap rock, reservoir, Akata). It has voxel fields for oil saturation, temperature and viscosity, a growing steam chamber, flow particles, animated pumpjacks and a steam-generator facility. Also includes cutaway, X-ray, lift-overburden, layer filter, camera presets, a timeline, cell inspection, live KPIs, a production profile, a tornado sensitivity chart, a 2-D response map, strategy comparison, CSV and PNG export, and saved scenarios. |
+| **Laboratory** | 3D core-flood rig replaying all seven floods (Tables 4.16–4.19). The front's fingering is driven by the mobility ratio of the measured fluids. Includes recovery and heat-demand charts and the petrophysics and fluid-property tables. |
+| **Science** | Interactive explainers: viscosity vs temperature (Beggs–Robinson calibrated to 438 cP @ 29 °C), mobility ratio with an animated displacement front, capillary number with a desaturation curve, recovery stages and the EOR taxonomy. |
+| **Methods** | Proxy model card (X1–X17, ensemble statistics, CV R²), limitations, a proposed master's research programme, target fields, team and citation. |
 
-**Published Research:** [Enhancing Heavy Oil Recovery in the Niger Delta through Thermal-Chemical Methods: An Experimental Approach](https://www.researchgate.net/publication/410889149)
+Keyboard (simulator): `Space` play/pause · `1–4` camera views · `X` X-ray · `E` lift overburden · `L` labels.
 
-**ML Proxy Model Repository:** [github.com/paulphysio/niger-delta-eor-proxy-model](https://github.com/paulphysio/niger-delta-eor-proxy-model)
+## What is measured vs derived
 
-### Key Finding
-Hot chemical flooding (steam + novel surfactant-polymer mixture) outperformed steam flooding alone at **80°C** — demonstrating energy-efficient heavy oil recovery for Niger Delta reservoirs (API gravity 17–19, 20% porosity).
+- **Measured** (thesis Ch. 4): core petrophysics, crude and chemical fluid properties, all seven flood recoveries, steam properties. See `src/lib/labData.ts`.
+- **Derived** (`src/lib/physics.ts`): viscosity–temperature curve, specific heat demand, mobility ratio, field heat-injection rate. Each derivation states its assumptions in the UI.
+- **Proxy** (`src/lib/proxyModel.ts`): polynomial response surface reproducing the 150-run Eclipse ensemble statistics and Random-Forest feature ranking. Outputs are cumulative oil (COP) and water (CWP); predictions past the training range are flagged.
+- **Illustrative** (`src/lib/fieldModel.ts`): the 3D saturation and temperature fields and the time profiles. These are scaled to the proxy totals and labelled as such in the app.
 
-## Getting Started
+## Run
 
 ```bash
 npm install
-npm run dev
+npm run dev        # http://localhost:3000
+npm run build && npm start
 ```
 
-Open [http://localhost:3000](http://localhost:3000)
+Stack: Next.js 14 · React Three Fiber / drei / postprocessing · Framer Motion · Recharts · Tailwind.
 
-## Deploy to Vercel
+## SEO & sharing
 
-```bash
-npm install -g vercel
-vercel
-```
-
-Or connect your GitHub repo to [vercel.com](https://vercel.com) for automatic deployment.
-
-## The 17 Simulation Parameters
-
-| Parameter | Description | Range |
-|-----------|-------------|-------|
-| X1–X4 | Producer bottom hole pressures | 500–4000 psi |
-| X5 | Injection rate | 100–800 BBL/day |
-| X6 | Steam quality | 0.1–1.0 fraction |
-| X7 | Injection temperature | 60–120 °C |
-| X8–X9 | Injector grid location (i, j) | 1–10 |
-| X10–X17 | Producer grid locations | 1–10 |
-
-## Author
-
-**Paul Madu**  
-B.Eng Petroleum Engineering — FUTO, 2024 (Second Class Upper, CGPA 3.74)  
-NYSC Completed 2025  
-madupaul.20181131453@futo.edu.ng  
-[github.com/paulphysio](https://github.com/paulphysio)
+- Each section is its own URL (`/`, `/simulator`, `/laboratory`, `/science`, `/methods`) with a unique title, description, canonical URL and social card. Old `/#section` links redirect automatically.
+- `robots.txt`, `sitemap.xml` and a web-app manifest are generated from `src/lib/site.ts`.
+- Structured data (JSON-LD) describes the site, the author, the web app, the thesis (`ScholarlyArticle`) and the lab measurements (`Dataset`, eligible for Google Dataset Search).
+- Icons: `favicon.ico` (16/32/48), `icon.svg`, Apple touch icon, PWA and maskable icons; social preview `og.png` (1200×630).
+- Set `NEXT_PUBLIC_SITE_URL` if you use a custom domain. Optional `NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION` / `NEXT_PUBLIC_BING_SITE_VERIFICATION` add the ownership meta tags. See `.env.example`.
