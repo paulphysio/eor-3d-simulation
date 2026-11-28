@@ -1,7 +1,8 @@
 'use client'
 import { useEffect, useLayoutEffect, useMemo, useRef, useState, memo } from 'react'
 import { Canvas, useFrame, ThreeEvent } from '@react-three/fiber'
-import { CameraControls, Environment, Html, Lightformer, ContactShadows } from '@react-three/drei'
+import { CameraControls, Environment, Html, Lightformer, ContactShadows, PerformanceMonitor } from '@react-three/drei'
+import SceneFrame, { Quality } from './SceneFrame'
 import { EffectComposer, Bloom, Vignette } from '@react-three/postprocessing'
 import * as THREE from 'three'
 import { SimInputs, SimOutputs, producerCells } from '../../lib/proxyModel'
@@ -406,8 +407,9 @@ function Rig({ view, autoRotate, inj }: { view?: { name: CameraView; nonce: numb
 }
 
 // ── Main scene ──────────────────────────────────────────────────────────────
-function SceneContent(p: Required<Omit<SceneProps, 'view' | 'onHoverCell'>> & Pick<SceneProps, 'view' | 'onHoverCell'>) {
-  const { inputs, outputs, time, property, layer, xray, explode, labels, cutaway, autoRotate, showcase } = p
+function SceneContent(p: Required<Omit<SceneProps, 'view' | 'onHoverCell'>> & Pick<SceneProps, 'view' | 'onHoverCell'> & { quality: Quality; degrade: () => void }) {
+  const { inputs, outputs, time, property, layer, xray, explode, labels, cutaway, autoRotate, showcase, quality } = p
+  const hi = quality === 'high'
   const cells = useMemo(() => computeField(inputs, outputs, time), [inputs, outputs, time])
   const [hoverCell, setHoverCell] = useState<Cell | null>(null)
   const inj: [number, number] = [gx(inputs.injI), gz(inputs.injJ)]
@@ -424,7 +426,8 @@ function SceneContent(p: Required<Omit<SceneProps, 'view' | 'onHoverCell'>> & Pi
       <fog attach="fog" args={['#04070d', 26, 60]} />
       <ambientLight intensity={0.75} />
       <hemisphereLight args={['#bcd2ff', '#3a2a18', 0.9]} />
-      <directionalLight position={[10, 16, 8]} intensity={2.4} castShadow shadow-mapSize={[2048, 2048]} shadow-camera-left={-12} shadow-camera-right={12} shadow-camera-top={12} shadow-camera-bottom={-12} />
+      {hi && <PerformanceMonitor onDecline={p.degrade} />}
+      <directionalLight position={[10, 16, 8]} intensity={2.4} castShadow={hi} shadow-mapSize={[1024, 1024]} shadow-camera-left={-12} shadow-camera-right={12} shadow-camera-top={12} shadow-camera-bottom={-12} />
       <pointLight position={[inj[0], RES_TOP + 0.6, inj[1]]} color="#ff6a3a" intensity={6 * intensity} distance={7} />
       <Environment resolution={256}>
         <Lightformer form="rect" intensity={2} position={[0, 6, -8]} scale={[20, 4, 1]} color="#9fb7ff" />
@@ -457,12 +460,14 @@ function SceneContent(p: Required<Omit<SceneProps, 'view' | 'onHoverCell'>> & Pi
         </Html>
       )}
 
-      <ContactShadows position={[0, RES_BOT - 1.32, 0]} opacity={0.5} scale={30} blur={2.6} far={6} />
+      {hi && <ContactShadows position={[0, RES_BOT - 1.32, 0]} opacity={0.5} scale={30} blur={2.6} far={6} resolution={256} />}
       <Rig view={p.view} autoRotate={autoRotate} inj={inj} />
-      <EffectComposer multisampling={4}>
-        <Bloom intensity={0.85} luminanceThreshold={0.62} luminanceSmoothing={0.2} mipmapBlur />
-        <Vignette eskil={false} offset={0.2} darkness={showcase ? 0.55 : 0.5} />
-      </EffectComposer>
+      {hi && (
+        <EffectComposer multisampling={2}>
+          <Bloom intensity={0.85} luminanceThreshold={0.62} luminanceSmoothing={0.2} mipmapBlur />
+          <Vignette eskil={false} offset={0.2} darkness={showcase ? 0.55 : 0.5} />
+        </EffectComposer>
+      )}
     </>
   )
 }
@@ -473,15 +478,19 @@ export default memo(function ReservoirScene(props: SceneProps) {
     ...props,
   }
   return (
-    <Canvas
-      shadows
-      dpr={[1, 1.75]}
-      camera={{ position: [13, 8.5, 15], fov: 42, near: 0.1, far: 120 }}
-      gl={{ antialias: true, preserveDrawingBuffer: true, toneMapping: THREE.ACESFilmicToneMapping }}
-      onCreated={({ gl }) => { gl.toneMappingExposure = 1.05 }}
-    >
-      <SceneContent {...full} />
-    </Canvas>
+    <SceneFrame>
+      {({ quality, attach, degrade }) => (
+        <Canvas
+          shadows={quality === 'high'}
+          dpr={quality === 'high' ? [1, 1.5] : 1}
+          camera={{ position: [13, 8.5, 15], fov: 42, near: 0.1, far: 120 }}
+          gl={{ antialias: true, preserveDrawingBuffer: true, toneMapping: THREE.ACESFilmicToneMapping, powerPreference: 'default' }}
+          onCreated={({ gl }) => { gl.toneMappingExposure = 1.05; attach(gl) }}
+        >
+          <SceneContent {...full} quality={quality} degrade={degrade} />
+        </Canvas>
+      )}
+    </SceneFrame>
   )
 })
 

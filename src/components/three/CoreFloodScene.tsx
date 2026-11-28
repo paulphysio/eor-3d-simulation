@@ -1,7 +1,8 @@
 'use client'
 import { memo, useEffect, useMemo, useRef, useLayoutEffect } from 'react'
 import { Canvas, useFrame } from '@react-three/fiber'
-import { CameraControls, Environment, Html, Lightformer, ContactShadows } from '@react-three/drei'
+import { CameraControls, Environment, Html, Lightformer, ContactShadows, PerformanceMonitor } from '@react-three/drei'
+import SceneFrame from './SceneFrame'
 import { EffectComposer, Bloom, Vignette } from '@react-three/postprocessing'
 import * as THREE from 'three'
 import { FloodRun } from '../../lib/labData'
@@ -215,25 +216,40 @@ function Rig({ run, t, labels }: { run: FloodRun; t: number; labels: boolean }) 
   )
 }
 
-export default memo(function CoreFloodScene({ run, t, labels = true }: { run: FloodRun; t: number; labels?: boolean }) {
+export default memo(function CoreFloodScene(props: { run: FloodRun; t: number; labels?: boolean }) {
+  return (
+    <SceneFrame>
+      {({ quality, attach, degrade }) => (
+        <Canvas shadows={quality === 'high'} dpr={quality === 'high' ? [1, 1.5] : 1} camera={{ position: [0, 3.2, 11], fov: 40 }} gl={{ antialias: true, toneMapping: THREE.ACESFilmicToneMapping, powerPreference: 'default' }} onCreated={({ gl }) => attach(gl)}>
+          <RigScene {...props} hi={quality === 'high'} degrade={degrade} />
+        </Canvas>
+      )}
+    </SceneFrame>
+  )
+})
+
+function RigScene({ run, t, labels = true, hi, degrade }: { run: FloodRun; t: number; labels?: boolean; hi: boolean; degrade: () => void }) {
   const ref = useRef<CameraControls>(null)
   return (
-    <Canvas shadows dpr={[1, 1.75]} camera={{ position: [0, 3.2, 11], fov: 40 }} gl={{ antialias: true, toneMapping: THREE.ACESFilmicToneMapping }}>
+    <>
+      {hi && <PerformanceMonitor onDecline={degrade} />}
       <color attach="background" args={['#04070d']} />
       <ambientLight intensity={0.4} />
-      <directionalLight position={[4, 8, 6]} intensity={1.5} castShadow shadow-mapSize={[1024, 1024]} />
+      <directionalLight position={[4, 8, 6]} intensity={1.5} castShadow={hi} shadow-mapSize={[1024, 1024]} />
       <pointLight position={[0, 0, 2.5]} intensity={run.tempC > 60 ? 4 : 1.5} color="#ff7a45" distance={6} />
       <Environment resolution={256}>
         <Lightformer form="rect" intensity={2.2} position={[0, 5, -6]} scale={[16, 3, 1]} color="#a8c0ff" />
         <Lightformer form="rect" intensity={1.4} position={[6, 2, 5]} scale={[6, 4, 1]} color="#ffd9b0" />
       </Environment>
       <Rig run={run} t={t} labels={labels} />
-      <ContactShadows position={[0, -1.89, 0]} opacity={0.55} scale={16} blur={2.4} far={4} />
+      {hi && <ContactShadows position={[0, -1.89, 0]} opacity={0.55} scale={16} blur={2.4} far={4} resolution={256} />}
       <CameraControls ref={ref} makeDefault minDistance={5} maxDistance={20} maxPolarAngle={Math.PI * 0.55} />
-      <EffectComposer multisampling={4}>
-        <Bloom intensity={0.7} luminanceThreshold={0.65} mipmapBlur />
-        <Vignette offset={0.25} darkness={0.6} />
-      </EffectComposer>
-    </Canvas>
+      {hi && (
+        <EffectComposer multisampling={2}>
+          <Bloom intensity={0.7} luminanceThreshold={0.65} mipmapBlur />
+          <Vignette offset={0.25} darkness={0.6} />
+        </EffectComposer>
+      )}
+    </>
   )
-})
+}
